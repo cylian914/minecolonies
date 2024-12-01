@@ -331,7 +331,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public void onPlacement()
     {
-        if (getBuildingLevel() == 0)
+        if (getBuildingLevel() == 0 && !hasParent())
         {
             ChunkDataHelper.claimBuildingChunks(colony, true, getPosition(), getClaimRadius(getBuildingLevel()), getCorners());
         }
@@ -961,7 +961,10 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public void onUpgradeComplete(final int newLevel)
     {
         cachedRotation = -1;
-        ChunkDataHelper.claimBuildingChunks(colony, true, this.getID(), this.getClaimRadius(newLevel), getCorners());
+        if (!hasParent())
+        {
+            ChunkDataHelper.claimBuildingChunks(colony, true, this.getID(), this.getClaimRadius(newLevel), getCorners());
+        }
         recheckGuardBuildingNear = true;
 
         ConstructionTapeHelper.removeConstructionTape(getCorners(), colony.getWorld());
@@ -1522,7 +1525,14 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public boolean hasWorkerOpenRequestsFiltered(final int citizenId, @NotNull final Predicate<IRequest<?>> selectionPredicate)
     {
-        return getOpenRequests(citizenId).stream().anyMatch(selectionPredicate);
+        for (final IRequest<?> req : getOpenRequests(citizenId))
+        {
+            if (selectionPredicate.test(req))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -1535,7 +1545,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
 
         for (final IToken<?> token : getOpenRequestsByCitizen().get(citizen.getId()))
         {
-            if (!citizen.isRequestAsync(token))
+            if (!citizen.isRequestAsync(token) && colony.getRequestManager().getRequestForToken(token) != null)
             {
                 return true;
             }
